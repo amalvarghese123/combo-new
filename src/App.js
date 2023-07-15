@@ -1,3 +1,4 @@
+import useData from "formik-data";
 import { useEffect, useMemo, useState } from "react";
 import Combo from "ui-components/combo/Combo";
 import VirtualizedDropdown from "ui-components/virtual";
@@ -31,7 +32,7 @@ function App() {
     };
     getData();
   }, []);
-  console.log(data);
+  // console.log(data);
 
   const arrayOfObjectsInit = [
     {
@@ -55,22 +56,29 @@ function App() {
   ];
   const arrayOfStrings = [...Array(5000)].map((_, idx) => `str-${idx}`);
   const [initialValueOfCombo, setInitialValueOfCombo] = useState();
+  const commaData = ["html", "css", "java", "python,css,java", "scss"];
   useEffect(() => {
     const init = ["str-4", "str-6", "str-7"];
     setTimeout(() => setInitialValueOfCombo(init), 4000);
     // setTimeout(() => setInitialValueOfCombo(arrayOfObjectsInit), 4000);
   }, []);
 
+  // const formik = useData();
+  // console.log("formik", formik.values.result);
   return (
     <div className="App">
       <div className="w-80">
         <Combo
           dropdownHeight={dropdownHeight}
-          items={arrayOfStrings}
-          initialValue={initialValueOfCombo}
+          options={commaData}
+          // initialValue={commaData}
+          // initialValue={initialValueOfCombo}
           onSelect={handleSelect}
-          // getValue={(el) => `${el?.id}`} //converting number to string
-          // getLabel={(el) => el?.title.slice(0, 5)}
+          onApply={(e) => console.log("onapply:", e)}
+          // getValue={(el) => `${el?.salary}`.toLowerCase()} //converting number to string
+          // getLabel={(el) => el?.mySalary}
+          // keyOfValue="salary"
+          // keyOfLabel="mySalary"
           isLoading={isLoading}
           isVirtualized={true}
           isMultiSelect={true}
@@ -91,3 +99,4 @@ function App() {
 export default App;
 
 //onApply(for query string pushing or api calling), comma separate, dupliactes remove, create new option, remove on clicking chip, tolowercase check, debounce, custom input
+//initial values with formik 2sec delay
