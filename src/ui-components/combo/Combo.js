@@ -2,15 +2,23 @@ import { Transition, Combobox } from "@headlessui/react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Virtu from "./Virtu";
 
+const removeArrayItem = (arr, idx) => {
+  const array = [...arr];
+  array.splice(idx, 1);
+  return array;
+};
+
 const Combo = ({
   dropdownHeight = "400px",
   options = [],
   getValue = (el) => el.toLowerCase(),
   getLabel = (el) => el,
-  keyOfValue = "",
-  keyOfLabel = "",
+  keyOfValue = "value",
+  keyOfLabel = "id",
   onSelect = () => {},
   onApply = () => {},
+  onCreateNew,
+  customInput: CustomInput,
   initialValue,
   isLoading,
   isVirtualized = false,
@@ -20,6 +28,15 @@ const Combo = ({
   const [selectedValue, setSelectedValue] = useState(isMultiSelect ? [] : "");
   const [query, setQuery] = useState("");
   const [items, setItems] = useState(options); //dropdown items
+
+  //check if array of objects or strings
+  const itemType = useMemo(() => {
+    if (items.length) {
+      if (typeof items[0] === "string") return "string";
+      else return "object";
+    }
+  }, [items]);
+
   //removeDuplicate values from array of strings or objects
   const unique = (values = []) => {
     if (!values.length) return [];
@@ -45,7 +62,7 @@ const Combo = ({
   const splitComma = (optionItems = []) => {
     const temp = [];
     optionItems.forEach((item, idx) => {
-      if (typeof item === "string") {
+      if (itemType === "string") {
         temp.push(...item.split(",")); //even if comma not present it will be array with single value(OR we can do if contains , check)
       } else {
         //if item is object
@@ -87,16 +104,9 @@ const Combo = ({
     () =>
       query === ""
         ? items
-        : items.filter((item) => {
-            return (
-              getValue(item) /* .toLowerCase() */ === query
-            ); /* .toLowerCase(); */
-          }),
+        : items.filter((item) => getValue(item).includes(query)),
     [query, items]
   );
-  useEffect(() => {
-    console.log({ query });
-  }, [query]);
   const activeClass = ({ active }) =>
     active ? "bg-teal-600 text-white" : "text-gray-900";
 
@@ -114,25 +124,52 @@ const Combo = ({
   );
   const getLabelsFromStringValue = (val) => {
     const selectedItem = getSelectedItemFromValue(val); //getting selected item from selected value
+    console.log({ selectedItem });
     return getLabel(selectedItem); //getting selected label from selected item
   };
   const labelsFromValue = useMemo(
     () =>
-      isMultiSelect && selectedValue.map((el) => getLabelsFromStringValue(el)), //calling recursively not possible inside usecallback, usememo
+      isMultiSelect &&
+      selectedValue.map((el) =>
+        itemType === "string" ? getLabel(el) : getLabelsFromStringValue(el)
+      ), //calling recursively not possible inside usecallback, usememo
     [selectedValue] //ismultiselect above is just to check if it is array. same as Array.isArray
   );
+
   const removeValue = (valueIdx) => {
-    setSelectedValue((prev) => {
-      const temp = [...prev];
-      temp.splice(valueIdx, 1);
-      return temp;
-    });
+    const updatedValues = removeArrayItem(selectedValue, valueIdx);
+    setSelectedValue((prev) => updatedValues);
   };
 
-  useEffect(() => {
-    console.log("selectedValue: ", selectedValue);
-  }, [selectedValue]);
-
+  const addNewItemToOptions = (val) => {
+    const newValue =
+      itemType === "string"
+        ? val
+        : {
+            [keyOfValue]: val,
+            [keyOfLabel]: val,
+          };
+    setItems((prev) => [...prev, newValue]);
+  };
+  const addNewItem = (e) => {
+    onCreateNew(e); //sending value to parent. dispatch action to add to database
+    addNewItemToOptions(e); //adding new item to dropdown
+    setSelectedValue((prev) => [...prev, e]); //add new value to chip
+    setQuery("");
+  };
+  const shouldRenderApply = useMemo(
+    () => isMultiSelect && onApply,
+    [isMultiSelect, onApply]
+  );
+  const shouldRenderCreateNewOption = useMemo(
+    () => !isLoading && query && !filteredItems.length,
+    [isLoading, query, filteredItems]
+  );
+  const renderSearchInput = useMemo(
+    () =>
+      CustomInput ? <CustomInput /> : <input type="text" className="w-full" />,
+    [CustomInput]
+  );
   return (
     <>
       <Combobox
@@ -146,10 +183,13 @@ const Combo = ({
           <div className="border relative w-full cursor-default overflow-hidden rounded-xl bg-white text-left shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
             <Combobox.Input
               placeholder="Select items"
-              className=" w-full px-4 py-2.5 focus:outline-none h-16"
+              // className="w-full px-4 py-2.5 focus:outline-none h-16"
               // displayValue={labelsFromValue}
+              as={Fragment}
               onChange={(e) => setQuery(e.target.value.toLowerCase())}
-            />
+            >
+              {renderSearchInput}
+            </Combobox.Input>
             <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
               +
             </Combobox.Button>
@@ -187,7 +227,13 @@ const Combo = ({
                   </Combobox.Option>
                 ))
               )}
-              {isMultiSelect && onApply && (
+              {shouldRenderCreateNewOption &&
+                (onCreateNew ? (
+                  <CreateNewOption addNewItem={addNewItem} query={query} />
+                ) : (
+                  <div>No items found</div>
+                ))}
+              {shouldRenderApply && (
                 <ApplyFilter
                   className="absolute top-3 right-5"
                   onClick={() => onApply(selectedValue)}
@@ -229,31 +275,27 @@ const SelectedItemsChips = ({
     </ul>
   );
 };
-// const SelectedItemsChips = ({ labelsFromValue }) => {
-//   return (
-//     <ul className="flex gap-2 w-96">
-//       {labelsFromValue.map((label, idx) => (
-//         <li
-//           key={idx}
-//           className="bg-green-300 rounded-lg px-2 py-1"
-//           onClick={() => removeValue()}
-//         >
-//           {label}
-//         </li>
-//       ))}
-//     </ul>
-//   );
-// };
 
 const ApplyFilter = ({ onClick, ...rest }) => {
   return (
     <section {...rest}>
       <button
-        className="bg-blue-400 text-white px-2 py-1 rounded-md"
+        className="bg-blue-400 text-white p-2 rounded-md"
         onClick={onClick}
       >
         Apply
       </button>
     </section>
+  );
+};
+
+const CreateNewOption = ({ addNewItem, query }) => {
+  return (
+    <button
+      className="bg-green-300 p-2 rounded-md"
+      onClick={() => addNewItem(query)}
+    >
+      Add new option
+    </button>
   );
 };

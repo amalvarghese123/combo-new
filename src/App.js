@@ -1,5 +1,5 @@
 import useData from "formik-data";
-import { useEffect, useMemo, useState } from "react";
+import { forwardRef, useEffect, useMemo, useState } from "react";
 import Combo from "ui-components/combo/Combo";
 import VirtualizedDropdown from "ui-components/virtual";
 import VirtualizedDropdownNew from "ui-components/virtual-tanstack";
@@ -54,7 +54,7 @@ function App() {
       body: "quo et expedita modi cum officia vel magni\ndoloribus qui repudiandae\nvero nisi sit\nquos veniam quod sed accusamus veritatis error",
     },
   ];
-  const arrayOfStrings = [...Array(5000)].map((_, idx) => `str-${idx}`);
+  const arrayOfStrings = [...Array(8)].map((_, idx) => `str-${idx}`);
   const [initialValueOfCombo, setInitialValueOfCombo] = useState();
   const commaData = ["html", "css", "java", "python,css,java", "scss"];
   useEffect(() => {
@@ -63,17 +63,17 @@ function App() {
     // setTimeout(() => setInitialValueOfCombo(arrayOfObjectsInit), 4000);
   }, []);
 
-  // const formik = useData();
+  const formik = useData();
   // console.log("formik", formik.values.result);
   return (
     <div className="App">
       <div className="w-80">
         <Combo
           dropdownHeight={dropdownHeight}
-          options={commaData}
-          // initialValue={commaData}
+          options={arrayOfStrings}
+          initialValue={formik.values.result}
           // initialValue={initialValueOfCombo}
-          onSelect={handleSelect}
+          // onSelect={handleSelect}
           onApply={(e) => console.log("onapply:", e)}
           // getValue={(el) => `${el?.salary}`.toLowerCase()} //converting number to string
           // getLabel={(el) => el?.mySalary}
@@ -82,6 +82,8 @@ function App() {
           isLoading={isLoading}
           isVirtualized={true}
           isMultiSelect={true}
+          customInput={CustomInput}
+          onCreateNew={(e) => console.log("new option:", e)}
         />
       </div>
       {/* <ComboBoxAutocomplete options={data} virtualized /> */}
@@ -100,3 +102,16 @@ export default App;
 
 //onApply(for query string pushing or api calling), comma separate, dupliactes remove, create new option, remove on clicking chip, tolowercase check, debounce, custom input
 //initial values with formik 2sec delay
+
+const CustomInput = forwardRef((props, ref) => {
+  return (
+    <>
+      <input
+        type="text"
+        className="bg-green-200 border-2 border-solid border-red-400 w-full"
+        ref={ref}
+        {...props}
+      />
+    </>
+  );
+});
